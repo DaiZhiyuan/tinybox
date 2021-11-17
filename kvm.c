@@ -1,5 +1,6 @@
 #include "kvm/cpu.h"
 
+#include <linux/kvm.h>
 #include <stdlib.h>
 #include <fcntl.h>
 
@@ -17,21 +18,25 @@ static void cpu__reset(struct cpu *self)
 
 static struct cpu *cpu__new(void)
 {
-       return calloc(1, sizeof(struct cpu));
+    return calloc(1, sizeof(struct cpu));
 }
 
 int main(int argc, char *argv[])
 {
-       struct cpu *cpu;
-       int fd;
+    struct cpu *cpu;
+    int fd, ret;
 
-       fd = open("/dev/kvm", O_RDWR);
-       if (fd < 0)
-               die("open");
+    fd = open("/dev/kvm", O_RDWR);
+    if (fd < 0)
+        die("open");
 
-       cpu = cpu__new();
+    ret = ioctl(fd, KVM_GET_API_VERSION, 0);
+    if (ret != KVM_API_VERSION)
+        die("ioctl");
 
-       cpu__reset(cpu);
+    cpu = cpu__new();
 
-       return 0;
+    cpu__reset(cpu);
+
+    return 0;
 }
