@@ -123,8 +123,15 @@ void kvm__enable_singlestep(struct kvm *self)
         warning("KVM_SET_GUEST_DEBUG failed");
 }
 
+static void print_segment(const char *name, struct kvm_segment *seg)
+{
+    printf(" %s        %04" PRIx16 "      %016" PRIx64 "  %08" PRIx32 "  %02" PRIx8 "    %x %x   %x  %x %x %x\n",name, (uint16_t) seg->selector, (uint64_t) seg->base, (uint32_t) seg->limit,(uint8_t) seg->type, seg->present, seg->dpl, seg->db, seg->s, seg->l, seg->g);
+}
+
 void kvm__show_registers(struct kvm *self)
 {
+    unsigned long cr0, cr2, cr3;
+    unsigned long cr4, cr8;
     unsigned long rax, rbx, rcx;
     unsigned long rdx, rsi, rdi;
     unsigned long rbp,  r8,  r9;
@@ -132,6 +139,7 @@ void kvm__show_registers(struct kvm *self)
     unsigned long r13, r14, r15;
     unsigned long rflags, rip, rsp;
     struct kvm_regs regs;
+    struct kvm_sregs sregs;
 
     if (ioctl(self->vcpu_fd, KVM_GET_REGS, &regs) < 0)
         die("KVM_GET_REGS failed");
@@ -150,6 +158,23 @@ void kvm__show_registers(struct kvm *self)
     printf("   rbp: %016lx    r8: %016lx    r9: %016lx\n", rbp, r8,  r9);
     printf("   r10: %016lx   r11: %016lx   r12: %016lx\n", r10, r11, r12);
     printf("   r13: %016lx   r14: %016lx   r15: %016lx\n", r13, r14, r15);
+
+    if (ioctl(self->vcpu_fd, KVM_GET_SREGS, &sregs) < 0)
+        die("KVM_GET_REGS failed");
+
+    cr0 = sregs.cr0; cr2 = sregs.cr2; cr3 = sregs.cr3;
+    cr4 = sregs.cr4; cr8 = sregs.cr8;
+
+    printf("Segment registers:\n");
+    printf(" cr0: %016lx   cr2: %016lx   cr3: %016lx\n", cr0, cr2, cr3);
+    printf(" cr4: %016lx   cr8: %016lx\n", cr4, cr8);
+    printf(" register  selector  base              limit     type  p dpl db s l g\n");
+    print_segment("cs", &sregs.cs);
+    print_segment("ss", &sregs.ss);
+    print_segment("ds", &sregs.ds);
+    print_segment("es", &sregs.es);
+    print_segment("fs", &sregs.fs);
+    print_segment("gs", &sregs.gs);
 }
 
 static inline void *guest_addr_to_host(struct kvm *self, unsigned long offset)
@@ -249,11 +274,90 @@ const char *kvm_exit_reasons[] = {
 
 void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
 {
-    self->regs.rip = rip;
-    self->regs.rflags = 0x0000000000000002ULL;
+    self->regs = (struct kvm_regs) {
+        .rip = rip,
+        .rflags = 0x0000000000000002ULL,
+    };
 
     if (ioctl(self->vcpu_fd, KVM_SET_REGS, &self->regs) < 0)
         die_perror("KVM_SET_REGS failed");
+
+    self->sregs = (struct kvm_sregs) {
+        .cr0 = 0x60000010ULL,
+
+        .cs = (struct kvm_segment) {
+            .selector       = 0xf000UL,
+            .base           = 0xffff0000UL,
+            .limit          = 0xffffU,
+            .type           = 0x0bU,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .ss = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .type           = 0x03U,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .ds = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .type           = 0x03U,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .es = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .type           = 0x03U,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .fs = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .type           = 0x03U,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .gs = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .type           = 0x03U,
+            .present        = 1,
+            .dpl            = 0x03,
+            .s              = 1,
+        },
+
+        .tr = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .present        = 1,
+            .type           = 0x03U,
+        },
+
+        .ldt = (struct kvm_segment) {
+            .limit          = 0xffffU,
+            .present        = 1,
+            .type           = 0x03U,
+        },
+
+        .gdt = (struct kvm_dtable) {
+            .limit          = 0xffffU,
+        },
+
+        .idt = (struct kvm_dtable) {
+            .limit          = 0xffffU,
+        },
+    };
+
+    if (ioctl(self->vcpu_fd, KVM_SET_SREGS, &self->sregs) < 0)
+        die_perror("KVM_SET_SREGS failed");
 }
 
 static void kvm__emulate_io_in(self, port, data, size, count)
