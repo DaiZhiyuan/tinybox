@@ -33,24 +33,6 @@ struct kvm {
     struct kvm_regs regs;
 };
 
-static void die_perror(const char *s)
-{
-    perror(s);
-    exit(1);
-}
-
-static void die(const char *format, ...)
-{
-    va_list ap;
-
-    va_start(ap, format);
-    vprintf(format, ap);
-    va_end(ap);
-
-    printf("\n");
-    exit(1);
-}
-
 static inline bool kvm__supports_extension(struct kvm *self, unsigned int extension)
 {
     int ret;
