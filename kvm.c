@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,25 @@
 #ifndef KVM_EXIT_INTERNAL_ERROR
     #define KVM_EXIT_INTERNAL_ERROR 17
 #endif
+
+static inline void *guest_addr_to_host(struct kvm *self, unsigned long offset)
+{
+    return self->ram_start + offset;
+}
+
+static inline uint64_t ip_flat_to_real(struct kvm *self, uint64_t ip)
+{
+    uint64_t cs = self->sregs.cs.selector;
+
+    return ip - (cs << 4);
+}
+
+static inline uint64_t ip_real_to_flat(struct kvm *self, uint64_t ip)
+{
+    uint64_t cs = self->sregs.cs.selector;
+
+    return ip + (cs << 4);
+}
 
 static bool kvm__supports_extension(struct kvm *self, unsigned int extension)
 {
@@ -188,11 +208,6 @@ void kvm__show_registers(struct kvm *self)
     printf("\n");
 }
 
-static inline void *guest_addr_to_host(struct kvm *self, unsigned long offset)
-{
-    return self->ram_start + offset;
-}
-
 void kvm__show_code(struct kvm *self)
 {
     unsigned int code_bytes = 64;
@@ -202,14 +217,14 @@ void kvm__show_code(struct kvm *self)
     uint8_t *ip;
     int i;
 
-    ip = guest_addr_to_host(self, self->regs.rip - code_prologue);
+    ip = guest_addr_to_host(self, ip_real_to_flat(self, self->regs.rip) - code_prologue);
 
     printf("Code: ");
 
     for (i = 0; i < code_len; i++, ip++) {
         c = *ip;
 
-        if (ip == guest_addr_to_host(self, self->regs.rip))
+        if (ip == guest_addr_to_host(self, ip_real_to_flat(self, self->regs.rip)))
             printf("<%02x> ", c);
         else
             printf("%02x ", c);
@@ -285,19 +300,16 @@ const char *kvm_exit_reasons[] = {
 
 void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
 {
-    self->regs = (struct kvm_regs) {
-        .rip = rip,
-        .rflags = 0x0000000000000002ULL,
-    };
-
-    if (ioctl(self->vcpu_fd, KVM_SET_REGS, &self->regs) < 0)
-        die_perror("KVM_SET_REGS failed");
+    /*
+     * First set up segmentation because we need to translate the flat
+     * 'rip' to segmented 16-bit cs:ip address.
+     */
 
     self->sregs = (struct kvm_sregs) {
         .cr0 = 0x60000010ULL,
 
         .cs = (struct kvm_segment) {
-            .selector       = 0xf000UL,
+            .selector       = 0xfff0UL,
             .base           = 0xffff0000UL,
             .limit          = 0xffffU,
             .type           = 0x0bU,
@@ -369,6 +381,18 @@ void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
 
     if (ioctl(self->vcpu_fd, KVM_SET_SREGS, &self->sregs) < 0)
         die_perror("KVM_SET_SREGS failed");
+
+    self->regs = (struct kvm_regs) {
+        /* We start the guest in 16-bit real mode  */
+        .rip = ip_flat_to_real(self, rip),
+        .rflags = 0x0000000000000002ULL,
+    };
+
+    if (self->regs.rip > USHRT_MAX)
+        die("ip 0x%" PRIx64 " is too high for real mode", (uint64_t)self->regs.rip);
+
+    if (ioctl(self->vcpu_fd, KVM_SET_REGS, &self->regs) < 0)
+        die_perror("KVM_SET_REGS failed");
 }
 
 static void kvm__emulate_io_in(self, port, data, size, count)
