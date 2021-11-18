@@ -1,9 +1,10 @@
 #include "kvm/cpu.h"
-
+#include "kvm/kvm.h"
 #include <linux/kvm.h>
 
 #include <asm/bootparam.h>
 
+#include <sys/ioctl.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <stdbool.h>
@@ -21,19 +22,7 @@
     #define KVM_EXIT_INTERNAL_ERROR 17
 #endif
 
-struct kvm {
-    int sys_fd;  /* For system ioctls(), i.e. /dev/kvm */
-    int vm_fd;   /* For VM ioctls() */
-    int vcpu_fd; /* For VCPU ioctls() */
-    struct kvm_run *kvm_run;
-
-    uint64_t ram_size;
-    void *ram_start;
-
-    struct kvm_regs regs;
-};
-
-static inline bool kvm__supports_extension(struct kvm *self, unsigned int extension)
+static bool kvm__supports_extension(struct kvm *self, unsigned int extension)
 {
     int ret;
 
@@ -54,7 +43,7 @@ static struct kvm *kvm__new(void)
     return self;
 }
 
-static struct kvm *kvm__init(void)
+struct kvm *kvm__init(void)
 {
     struct kvm_userspace_memory_region mem;
     struct kvm *self;
@@ -118,13 +107,13 @@ static struct kvm *kvm__init(void)
     return self;
 }
 
-static void kvm__run(struct kvm *self)
+void kvm__run(struct kvm *self)
 {
     if (ioctl(self->vcpu_fd, KVM_RUN, 0) < 0)
         die_perror("KVM_RUN failed");
 }
 
-static void kvm__enable_singlestep(struct kvm *self)
+void kvm__enable_singlestep(struct kvm *self)
 {
     struct kvm_guest_debug debug = {
         . control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
@@ -134,7 +123,7 @@ static void kvm__enable_singlestep(struct kvm *self)
         warning("KVM_SET_GUEST_DEBUG failed");
 }
 
-static void kvm__show_registers(struct kvm *self)
+void kvm__show_registers(struct kvm *self)
 {
     unsigned long rax, rbx, rcx;
     unsigned long rdx, rsi, rdi;
@@ -168,7 +157,7 @@ static inline void *guest_addr_to_host(struct kvm *self, unsigned long offset)
     return self->ram_start + offset;
 }
 
-static void kvm__show_code(struct kvm *self)
+void kvm__show_code(struct kvm *self)
 {
     unsigned int code_bytes = 64;
     unsigned int code_prologue = code_bytes * 43 / 64;
@@ -219,7 +208,7 @@ static uint32_t load_bzimage(struct kvm *kvm, int fd)
     return boot.hdr.code32_start;
 }
 
-static uint32_t kvm__load_kernel(struct kvm *kvm, const char *kernel_filename)
+uint32_t kvm__load_kernel(struct kvm *kvm, const char *kernel_filename)
 {
     uint32_t ret;
     int fd;
@@ -237,7 +226,7 @@ static uint32_t kvm__load_kernel(struct kvm *kvm, const char *kernel_filename)
 
 #define DEFINE_KVM_EXIT_REASON(reason) [reason] = #reason
 
-static const char *exit_reasons[] = {
+const char *kvm_exit_reasons[] = {
     DEFINE_KVM_EXIT_REASON(KVM_EXIT_UNKNOWN),
     DEFINE_KVM_EXIT_REASON(KVM_EXIT_EXCEPTION),
     DEFINE_KVM_EXIT_REASON(KVM_EXIT_IO),
@@ -258,19 +247,13 @@ static const char *exit_reasons[] = {
     DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTERNAL_ERROR),
 };
 
-static void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
+void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
 {
     self->regs.rip = rip;
     self->regs.rflags = 0x0000000000000002ULL;
 
     if (ioctl(self->vcpu_fd, KVM_SET_REGS, &self->regs) < 0)
         die_perror("KVM_SET_REGS failed");
-}
-
-static void usage(char *argv[])
-{
-    fprintf(stderr, "  usage: %s <kernel-image>\n", argv[0]);
-    exit(1);
 }
 
 static void kvm__emulate_io_in(self, port, data, size, count)
@@ -285,61 +268,11 @@ static void kvm__emulate_io_out(self, port, data, size, count)
             __func__, port, size, count);
 }
 
-static void kvm__emulate_io(struct kvm *self, uint16_t port, void *data,
+void kvm__emulate_io(struct kvm *self, uint16_t port, void *data,
                             int direction, int size, uint32_t count)
 {
     if (direction == KVM_EXIT_IO_IN)
         kvm__emulate_io_in(self, port, data, size, count);
     else
         kvm__emulate_io_out(self, port, data, size, count);
-}
-
-int main(int argc, char *argv[])
-{
-    const char *kernel_filename;
-    uint64_t kernel_start;
-    struct kvm *kvm;
-    int ret;
-
-    if (argc < 2)
-        usage(argv);
-
-    kernel_filename = argv[1];
-    
-    kvm = kvm__init();
-
-    kernel_start = kvm__load_kernel(kvm, kernel_filename);
-
-    kvm__reset_vcpu(kvm, kernel_start);
-
-    kvm__enable_singlestep(kvm);
-
-    for (;;) {
-        kvm__run(kvm);
-
-        switch (kvm->kvm_run->exit_reason) {
-            case KVM_EXIT_IO:
-                kvm__emulate_io(kvm,
-                                kvm->kvm_run->io.port,
-                                (uint8_t *)kvm->kvm_run + kvm->kvm_run->io.data_offset,
-                                kvm->kvm_run->io.direction,
-                                kvm->kvm_run->io.size,
-                                kvm->kvm_run->io.count);
-                goto exit_kvm;
-                break;
-
-            default:
-                goto exit_kvm;
-
-        }
-    }
-
-exit_kvm:
-    fprintf(stderr, "KVM exit reason: %" PRIu32 " (\"%s\")\n",
-        kvm->kvm_run->exit_reason, exit_reasons[kvm->kvm_run->exit_reason]);
-
-    kvm__show_registers(kvm);
-    kvm__show_code(kvm);
-
-    return 0;
 }
