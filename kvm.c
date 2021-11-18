@@ -114,6 +114,11 @@ static void kvm__run(struct kvm *self)
         die("KVM_RUN");
 }
 
+static void kvm__load_kernel(struct kvm *kvm, const char *kernel_filename)
+{
+
+}
+
 static const char *exit_reasons[] = {
     [KVM_EXIT_UNKNOWN] = "unknown",
     [KVM_EXIT_EXCEPTION] = "exception",
@@ -134,17 +139,26 @@ static const char *exit_reasons[] = {
     [KVM_EXIT_INTERNAL_ERROR] = "internal error",
 };
 
+static void usage(char *argv[])
+{
+    fprintf(stderr, "  usage: %s <kernel-image>\n", argv[0]);
+    exit(1);
+}
+
 int main(int argc, char *argv[])
 {
-    struct cpu *cpu;
+    const char *kernel_filename;
     struct kvm *kvm;
     int ret;
 
+    if (argc < 2)
+        usage(argv);
+
+    kernel_filename = argv[1];
+    
     kvm = kvm__init();
 
-    cpu = cpu__new();
-
-    cpu__reset(cpu);
+    kvm__load_kernel(kvm, kernel_filename);
 
     kvm__run(kvm);
 
