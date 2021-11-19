@@ -133,6 +133,29 @@ void kvm__run(struct kvm *self)
         die_perror("KVM_RUN failed");
 }
 
+static inline uint32_t segment_to_flat(uint16_t selector, uint16_t offset)
+{
+    return ((uint32_t)selector << 4) + (uint32_t) offset;
+}
+
+#define KERNEL_BIN_START_ADDR segment_to_flat(0xf000, 0xfff0)
+
+static uint32_t load_flat_binary(struct kvm *kvm, int fd)
+{
+    void *p;
+    int nr;
+
+    if (lseek(fd, 0, SEEK_SET) < 0)
+        die_perror("lseek");
+
+    p = guest_addr_to_host(kvm, KERNEL_BIN_START_ADDR);
+
+    while ((nr = read(fd, p, 65536)) > 0)
+        p += nr;
+
+    return KERNEL_BIN_START_ADDR;
+}
+
 void kvm__enable_singlestep(struct kvm *self)
 {
     struct kvm_guest_debug debug = {
@@ -234,7 +257,7 @@ void kvm__show_code(struct kvm *self)
 }
 
 /* bzImage are loaded at 1MiB by defalut. */
-#define KERNEL_START_ADDR (1024ULL * 1024ULL)
+#define KERNEL_BZ_START_ADDR (1024ULL * 1024ULL)
 
 static const char *BZIMAGE_MAGIC = "HdrS";
 
@@ -251,7 +274,7 @@ static uint32_t load_bzimage(struct kvm *kvm, int fd)
 
     lseek(fd, (boot.hdr.setup_sects+1) * 512, SEEK_SET);
 
-    p = guest_addr_to_host(kvm, KERNEL_START_ADDR);
+    p = guest_addr_to_host(kvm, KERNEL_BZ_START_ADDR);
 
     while ((nr = read(fd, p, 65536)) > 0)
         p += nr;
@@ -269,9 +292,16 @@ uint32_t kvm__load_kernel(struct kvm *kvm, const char *kernel_filename)
         die("unable to open kernel");
 
     ret = load_bzimage(kvm, fd);
-    if (!ret)
-        die("%s is not a valid bzImage", kernel_filename);
+    if (ret)
+        goto found_kernel;
 
+    ret = load_flat_binary(kvm, fd);
+    if (ret)
+        goto found_kernel;
+
+    die("%s is not a valid bzImage", kernel_filename);
+
+found_kernel:
     return ret;
 }
 
@@ -309,7 +339,7 @@ void kvm__reset_vcpu(struct kvm *self, uint64_t rip)
         .cr0 = 0x60000010ULL,
 
         .cs = (struct kvm_segment) {
-            .selector       = 0xfff0UL,
+            .selector       = 0xf000UL,
             .base           = 0xffff0000UL,
             .limit          = 0xffffU,
             .type           = 0x0bU,
