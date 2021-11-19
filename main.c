@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-extern const char *kvm_exit_reasons[];
-
 static void usage(char *argv[])
 {
     fprintf(stderr, "  usage: %s <kernel-image>\n", argv[0]);

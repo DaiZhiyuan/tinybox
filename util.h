@@ -1,7 +1,6 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-
 /*
  * Some bits are stolen from perf tool :)
  */
