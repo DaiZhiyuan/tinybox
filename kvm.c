@@ -202,12 +202,12 @@ void kvm__show_registers(struct kvm *self)
     r13 = regs.r13; r14 = regs.r14; r15 = regs.r15;
 
     printf("Registers:\n");
-    printf("rflags: %016lx   rip: %016lx   rsp: %016lx\n", rip, rsp);
-    printf("   rax: %016lx   ebx: %016lx   ecx: %016lx\n", rax, rbx, rcx);
-    printf("   rdx: %016lx   rsi: %016lx   rdi: %016lx\n", rdx, rsi, rdi);
-    printf("   rbp: %016lx    r8: %016lx    r9: %016lx\n", rbp, r8,  r9);
-    printf("   r10: %016lx   r11: %016lx   r12: %016lx\n", r10, r11, r12);
-    printf("   r13: %016lx   r14: %016lx   r15: %016lx\n", r13, r14, r15);
+    printf("   rip: %016lx   rsp: %016lx rflags: %016lx\n", rip, rsp, rflags);
+    printf("   rax: %016lx   ebx: %016lx    ecx: %016lx\n", rax, rbx, rcx);
+    printf("   rdx: %016lx   rsi: %016lx    rdi: %016lx\n", rdx, rsi, rdi);
+    printf("   rbp: %016lx    r8: %016lx     r9: %016lx\n", rbp, r8,  r9);
+    printf("   r10: %016lx   r11: %016lx    r12: %016lx\n", r10, r11, r12);
+    printf("   r13: %016lx   r14: %016lx    r15: %016lx\n", r13, r14, r15);
 
     if (ioctl(self->vcpu_fd, KVM_GET_SREGS, &sregs) < 0)
         die("KVM_GET_REGS failed");
@@ -215,7 +215,7 @@ void kvm__show_registers(struct kvm *self)
     cr0 = sregs.cr0; cr2 = sregs.cr2; cr3 = sregs.cr3;
     cr4 = sregs.cr4; cr8 = sregs.cr8;
 
-    printf("   cr0: %016lx   cr2: %016lx   cr3: %016lx\n", cr0, cr2, cr3);
+    printf("   cr0: %016lx   cr2: %016lx    cr3: %016lx\n", cr0, cr2, cr3);
     printf("   cr4: %016lx   cr8: %016lx\n", cr4, cr8);
     printf("Segment registers:\n");
     printf(" register  selector  base              limit     type  p dpl db s l g avl\n");
