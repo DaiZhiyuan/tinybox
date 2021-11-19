@@ -281,8 +281,11 @@ void kvm__show_code(struct kvm *self)
 
 static const char *BZIMAGE_MAGIC = "HdrS";
 
+#define BZ_DEFAULT_SETUP_SECTS 4
+
 static bool load_bzimage(struct kvm *kvm, int fd)
 {
+    unsigned long setup_sects;
     struct boot_params boot;
     ssize_t setup_size;
     void *p;
@@ -293,7 +296,11 @@ static bool load_bzimage(struct kvm *kvm, int fd)
     if (memcmp(&boot.hdr.header, BZIMAGE_MAGIC, strlen(BZIMAGE_MAGIC)) != 0)
         return false;
 
-    setup_size = (boot.hdr.setup_sects + 1) * 512;
+    setup_sects = boot.hdr.setup_sects + 1;
+    if (setup_sects == 0)
+        setup_sects = BZ_DEFAULT_SETUP_SECTS;
+
+    setup_size = setup_size << 4;
     p = guest_addr_to_host(kvm, BZ_BOOT_LOADER_START);
 
     if (read(fd, p, setup_size) != setup_size)
