@@ -16,12 +16,16 @@ static void usage(char *argv[])
 int main(int argc, char *argv[])
 {
     const char *kernel_filename = NULL;
+    const char *kernel_cmdline = NULL;
     struct kvm *kvm;
     int i;
 
     for (i = 1; i < argc; i++) {
         if (!strncmp("--kernel=", argv[i], 9)) {
             kernel_filename = &argv[i][9];
+            continue;
+        } else if (!strncmp("--parames=", argv[i], 9)){
+            kernel_cmdline = &argv[i][9];
             continue;
         } else {
             if (argv[i][0] != '-')
@@ -37,7 +41,7 @@ int main(int argc, char *argv[])
 
     kvm = kvm__init();
 
-    if (!kvm__load_kernel(kvm, kernel_filename))
+    if (!kvm__load_kernel(kvm, kernel_filename, kernel_cmdline))
         die("unable to load kernel %s", kernel_filename);
 
     kvm__reset_vcpu(kvm);
