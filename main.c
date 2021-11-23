@@ -1,10 +1,10 @@
 #include "kvm/kvm.h"
-
-#include "util.h"
+#include "kvm/util.h"
 
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 
 static void usage(char *argv[])

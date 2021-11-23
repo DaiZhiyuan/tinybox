@@ -1,6 +1,9 @@
-#include <kvm/kvm.h>
+#include "kvm/kvm.h"
 
-#include <linux/kvm.h>
+#include "kvm/interrupt.h"
+#include "kvm/util.h"
+
+#include <kvm/kvm.h>
 
 #include <asm/bootparam.h>
 
@@ -15,9 +18,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-
-#include "ivt.h"
-#include "util.h"
 
 /*
  * Compatibility code. Remove this when we move to tools/kvm.
@@ -193,16 +193,17 @@ static int load_flat_binary(struct kvm *self, int fd)
 #define BZ_KERNEL_START 0x100000UL
 
 static const char *BZIMAGE_MAGIC = "HdrS";
+static const char fakebios_vector[] = { 0xcf };
 
 #define BZ_DEFAULT_SETUP_SECTS 4
 
 static bool load_bzimage(struct kvm *self, int fd, const char *kernel_cmdline)
 {
     unsigned long setup_sects;
-    struct boot_params boot, *t;
-    struct ivt_entry real_mode_irq;
+    struct boot_params boot;
+    struct real_intr_desc intr;
     ssize_t setup_size;
-    void *p, *v;
+    void *p;
     int nr;
 
     /*
@@ -242,27 +243,22 @@ static bool load_bzimage(struct kvm *self, int fd, const char *kernel_cmdline)
     self->boot_sp = BOOT_LOADER_SP;
 
     /*
-     * Setup a *fake* real mode IVT, it has only one real
-     * hadler which does just iret
+     * Setup a *fake* real mode vector table, it has only
+     * one real hadler which does just iret
+     *
+     * we need a place for 1 byte so lets put
+     * it where the BIOS lives -- BDA area
      */
-
-    /*
-     * we need a place for 2 bytes so lets do a hack 
-     * and use spare place in bootparams
-     */
-    t = (struct boot_params *)guest_real_to_host(self, BOOT_LOADER_SELECTOR, BOOT_LOADER_IP);
-    v = guest_flat_to_host(self, 0);
-    t->hdr._pad2[0] = 0xfb; /* sti */
-    t->hdr._pad2[1] = 0xcf; /* iret */
-    nr = (void *)&t->hdr._pad2[0] - v;
-    real_mode_irq = (struct ivt_entry) {
-        .segment = nr >> 4,
-        .offset = (nr - (nr & ~0xf)),
+    p = guest_flat_to_host(self, BDA_START);
+    memcpy(p, fakebios_vector, sizeof(fakebios_vector));
+    intr = (struct real_intr_desc) {
+        .segment = BDA_START >> 4,
+        .offset = 0,
     };
 
-    ivt_set_all(real_mode_irq);
     p = guest_flat_to_host(self, 0);
-    ivt_copy_table(p, IVT_VECTORS * sizeof(real_mode_irq));
+    interrupt_table__setup(&self->interrupt_table, &intr);
+    interrupt_table__copy(&self->interrupt_table, p, REAL_INTR_SIZE);
 
     return true;
 }
