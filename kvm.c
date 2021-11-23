@@ -513,8 +513,6 @@ static void setup_cpuid(struct kvm *self)
 
 void kvm__reset_vcpu(struct kvm *self)
 {
-    setup_cpuid(self);
-
     self->sregs = (struct kvm_sregs) {
         .cr0 = 0x60000010ULL,
 
