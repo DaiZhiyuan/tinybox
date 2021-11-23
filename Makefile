@@ -6,7 +6,7 @@ OBJS += main.o
 OBJS += util.o
 OBJS += interrupt.o
 
-CFLAGS += $(CPPFLAGS) -Iinclude
+CFLAGS += $(CPPFLAGS) -Iinclude -g
 
 WARNINGS += -Wall
 WARNINGS += -Wcast-align
