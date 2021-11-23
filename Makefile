@@ -6,6 +6,7 @@ OBJS += kvm.o
 OBJS += main.o
 OBJS += util.o
 OBJS += interrupt.o
+OBJS += ioport.o
 
 CFLAGS += $(CPPFLAGS) -Iinclude -g
 
