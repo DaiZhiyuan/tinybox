@@ -1,4 +1,5 @@
 #include "kvm/kvm.h"
+
 #include "kvm/util.h"
 
 #include <inttypes.h>
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
             single_step = true;
             continue;
         } else {
+            /* any unspecified arg is kernel image */
             if (argv[i][0] != '-')
                 kernel_filename = argv[i];
             else
@@ -74,7 +76,6 @@ int main(int argc, char *argv[])
                                 kvm->kvm_run->io.count);
                 if (!ret)
                     goto exit_kvm;
-
                 break;
             }
             default:
