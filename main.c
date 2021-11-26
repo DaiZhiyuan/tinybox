@@ -62,12 +62,15 @@ int main(int argc, char *argv[])
         kvm__run(kvm);
 
         switch (kvm->kvm_run->exit_reason) {
-            case KVM_EXIT_DEBUG:
+            case KVM_EXIT_DEBUG: {
                 kvm__show_registers(kvm);
                 kvm__show_code(kvm);
+
                 break;
+            }
             case KVM_EXIT_IO: {
                 bool ret;
+
                 ret = kvm__emulate_io(kvm,
                                 kvm->kvm_run->io.port,
                                 (uint8_t *)kvm->kvm_run + kvm->kvm_run->io.data_offset,
@@ -76,6 +79,20 @@ int main(int argc, char *argv[])
                                 kvm->kvm_run->io.count);
                 if (!ret)
                     goto exit_kvm;
+
+                break;
+            }
+            case KVM_EXIT_MMIO: {
+                bool ret;
+
+                ret = kvm__emulate_mmio(kvm,
+                                kvm->kvm_run->mmio.phys_addr,
+                                kvm->kvm_run->mmio.data,
+                                kvm->kvm_run->mmio.len,
+                                kvm->kvm_run->mmio.is_write);
+                if(!ret)
+                    goto exit_kvm;
+
                 break;
             }
             default:
