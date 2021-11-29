@@ -50,11 +50,11 @@ static struct ioport_operations dummy_write_only_ioport_ops = {
 };
 
 static struct ioport_operations *ioport_ops[USHRT_MAX] = {
-    /* PORT 0x0070 - 0x007F - CMOS RAM/RTC (REAL TIME CLOCK) */
+    /* PORT 0070-0x007F - CMOS RAM/RTC (REAL TIME CLOCK) */
     [0x70] = &cmos_ram_rtc_ops,
     [0x71] = &dummy_read_write_ioport_ops,
 
-    /* PORT 0x0020 - 0x003F - 8259A PIC 1*/
+    /* PORT 0020-003F - 8259A PIC 1*/
     [0x20] = &dummy_read_write_ioport_ops,
     [0x21] = &dummy_read_write_ioport_ops,
 
@@ -62,14 +62,18 @@ static struct ioport_operations *ioport_ops[USHRT_MAX] = {
     [0x0040] = &dummy_read_write_ioport_ops,
     [0x0043] = &dummy_read_write_ioport_ops,
 
-    /* PORT 0x00A0 - 0x00AF - 8259A PIC 2*/
+    /* PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT) */
+    [0x0060] = &dummy_read_write_ioport_ops,
+    [0x0061] = &dummy_read_write_ioport_ops,
+
+    /* PORT 00A0-00AF - 8259A PIC 2*/
     [0xA0] = &dummy_read_write_ioport_ops,
     [0xA1] = &dummy_read_write_ioport_ops,
 
     /* PORT 00ED - DUMMY PORT FOR DELAY */
     [0xED]  = &dummy_write_only_ioport_ops,
 
-    /* PORT 0xf00f0 - 0x00ff - Math co-processor */
+    /* PORT 00f0-00ff - Math co-processor */
     [0xF0] = &dummy_write_only_ioport_ops,
     [0xF1] = &dummy_write_only_ioport_ops,
 
