@@ -22,12 +22,9 @@ static void handle_sigquit(int sig)
     exit(1);
 }
 
-unsigned int dbgtest_mode;
-
 static void usage(char *argv[])
 {
-    fprintf(stderr, "  usage: %s [--dbgtest] [--single-step] [--kernel=]<kernel-image>\n", 
-        argv[0]);
+    fprintf(stderr, "  usage: %s [--single-step] [--kernel=]<kernel-image>\n", argv[0]);
     exit(1);
 }
 
@@ -53,9 +50,6 @@ int main(int argc, char *argv[])
             continue;
         } else if (option_matches(argv[i], "--params=")){
             kernel_cmdline = &argv[i][9];
-            continue;
-        } else if (option_matches(argv[i], "--dbgtest=")){
-            dbgtest_mode = 1;
             continue;
         } else if (option_matches(argv[i], "--single-step")) {
             single_step = true;
@@ -137,12 +131,6 @@ int main(int argc, char *argv[])
     }
 
 exit_kvm:
-    if (dbgtest_mode) {
-        if (kvm->kvm_run->exit_reason == KVM_EXIT_IO && kvm->kvm_run->io.port == 0xe0) {
-            fprintf(stderr, "KVM: this is an expected IO error\n");
-            goto out;
-        }
-    }
     fprintf(stderr, "KVM exit reason: %" PRIu32 " (\"%s\")\n",
         kvm->kvm_run->exit_reason, kvm_exit_reasons[kvm->kvm_run->exit_reason]);
     if (kvm->kvm_run->exit_reason == KVM_EXIT_UNKNOWN)
@@ -152,7 +140,6 @@ exit_kvm:
     kvm__show_code(kvm);
     kvm__show_page_tables(kvm);
 
-out:
     kvm__delete(kvm);
 
     return 0;

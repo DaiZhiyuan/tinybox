@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 static uint8_t ioport_to_uint8(void *data)
@@ -25,6 +26,15 @@ static bool cmos_ram_rtc_io_out(struct kvm *self, uint16_t port, void *data, int
 
 static struct ioport_operations cmos_ram_rtc_ops = {
     .io_out = cmos_ram_rtc_io_out,
+};
+
+static bool debug_io_out(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
+{
+    exit(EXIT_SUCCESS);
+}
+
+static struct ioport_operations debug_ops = {
+    .io_out = debug_io_out,
 };
 
 static bool dummy_io_in(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
@@ -68,6 +78,10 @@ static struct ioport_operations *ioport_ops[USHRT_MAX] = {
     /* PORT 00A0-00AF - 8259A PIC 2*/
     [0x00A0] = &dummy_read_write_ioport_ops,
     [0x00A1] = &dummy_read_write_ioport_ops,
+
+    /* PORT 00E0-00EF are 'motherboard specific' so we use them for our
+     * internal debugging purposes. */
+    [0x00E0] = &debug_ops,
 
     /* PORT 00ED - DUMMY PORT FOR DELAY */
     [0x00ED]  = &dummy_write_only_ioport_ops,
