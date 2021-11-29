@@ -29,12 +29,13 @@ static void usage(char *argv[])
     exit(1);
 }
 
+static char real_cmdline[2048];
+
 int main(int argc, char *argv[])
 {
     const char *kernel_filename = NULL;
     const char *kernel_cmdline = NULL;
     bool single_step = false;
-    char real_cmdline[128];
     int i;
 
     signal(SIGQUIT, handle_sigquit);
