@@ -255,19 +255,36 @@ static bool load_bzimage(struct kvm *self, int fd, const char *kernel_cmdline)
     while ((nr = read(fd, p, 65536)) > 0)
         p += nr;
 
+    p = guest_flat_to_host(self, BOOT_CMDLINE_OFFSET);
     if (kernel_cmdline) {
         cmdline_size = strlen(kernel_cmdline) + 1;
 
         if (cmdline_size > boot.hdr.cmdline_size)
             cmdline_size = boot.hdr.cmdline_size;
 
-        p = guest_flat_to_host(self, BOOT_CMDLINE_OFFSET);
         memset(p, 0, boot.hdr.cmdline_size);
         memcpy(p, kernel_cmdline, cmdline_size - 1);
-
-        p = guest_real_to_host(self, BOOT_LOADER_SELECTOR, 0x228);
-        *(uint32_t *)p = BOOT_CMDLINE_OFFSET;
     } 
+
+#define hdr_offset(member) \
+    offsetof(struct boot_params, hdr) + \
+    offsetof(struct setup_header, member)
+
+#define guest_hdr(kvm, member) \
+    guest_real_to_host(kvm, BOOT_LOADER_SELECTOR, hdr_offset(member))
+
+    /* some fields in guest header have to be updated */
+    p = guest_hdr(self, cmd_line_ptr);
+    *(uint32_t *)p = BOOT_CMDLINE_OFFSET;
+
+    p = guest_hdr(self, type_of_loader);
+    *(uint8_t *)p = 0xff;
+
+    p = guest_hdr(self, heap_end_ptr);
+    *(uint16_t *)p = 0xfe00;
+
+    p = guest_hdr(self, loadflags);
+    *(uint8_t *)p |= CAN_USE_HEAP;
 
     self->boot_selector = BOOT_LOADER_SELECTOR;
     /*
