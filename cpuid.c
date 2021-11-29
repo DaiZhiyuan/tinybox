@@ -91,7 +91,7 @@ void kvm__setup_cpuid(struct kvm *self)
 		switch (function) {
         case 0x00: {    /* Vendor-ID and Largest Standard Function */
             kvm_cpuid->entries[ndx++] = (struct kvm_cpuid_entry2) {
-                .function = function,
+                .function = 0,
                 .index = 0,
                 .flags = 0,
                 .eax = 4,
@@ -115,7 +115,7 @@ void kvm__setup_cpuid(struct kvm *self)
                 .flags = 0,
                 .eax = regs.eax,
                 .ebx = regs.ebx,
-                .ecx = cpu_feature_disable(regs.ecx, KVM__X86_FEATURE_XSAVE) |
+                .ecx = cpu_feature_disable(regs.ecx, KVM__X86_FEATURE_XSAVE) &
                        cpu_feature_disable(regs.ecx, KVM__X86_FEATURE_VMX),
                 .edx = regs.edx,
             };
