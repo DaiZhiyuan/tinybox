@@ -1,6 +1,2 @@
 /kvm
 *.o
-kernel.bin
-kernel.elf
-intfake-real.bin
-int10-real.bin
