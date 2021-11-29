@@ -1,10 +1,13 @@
 #include "kvm/ioport.h"
 #include "kvm/kvm.h"
 
+#include <stdbool.h>
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+bool ioport_debug;
 
 static uint8_t ioport_to_uint8(void *data)
 {
@@ -152,6 +155,8 @@ bool kvm__emulate_io(struct kvm *self, uint16_t port, void *data,
     return true;
 
 error:
-    ioport_error(port, data, direction, size, count);
-    return false;
+    if (ioport_debug)
+        ioport_error(port, data, direction, size, count);
+
+    return !ioport_debug;
 }

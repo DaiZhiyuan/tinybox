@@ -10,6 +10,14 @@
 #include <string.h>
 #include <stdio.h>
 
+extern bool ioport_debug;
+
+static void usage(char *argv[])
+{
+    fprintf(stderr, "  usage: %s [--single-step] [--ioport-debug]] [--params=<kernel-params>] [--kernel=]<kernel-image>\n", argv[0]);
+    exit(1);
+}
+
 static struct kvm *kvm;
 
 static void handle_sigquit(int sig)
@@ -19,12 +27,6 @@ static void handle_sigquit(int sig)
     kvm__show_page_tables(kvm);
 
     kvm__delete(kvm);
-    exit(1);
-}
-
-static void usage(char *argv[])
-{
-    fprintf(stderr, "  usage: %s [--single-step] [--params=<kernel-params>] [--kernel=]<kernel-image>\n", argv[0]);
     exit(1);
 }
 
@@ -53,6 +55,9 @@ int main(int argc, char *argv[])
             continue;
         } else if (option_matches(argv[i], "--single-step")) {
             single_step = true;
+            continue;
+        } else if (option_matches(argv[i], "--ioport-debug")) {
+            ioport_debug = true;
             continue;
         } else {
             /* any unspecified arg is kernel image */
