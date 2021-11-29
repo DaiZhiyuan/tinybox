@@ -89,3 +89,12 @@ clean:
 	$(Q) rm -f $(OBJS) $(PROGRAM)
 
 .PHONY: clean
+
+KVM_DEV	?= /dev/kvm
+
+$(KVM_DEV):
+	$(E) "  MKNOD " $@
+	$(Q) mknod $@ char 10 232
+
+devices: $(KVM_DEV)
+.PHONY: devices
