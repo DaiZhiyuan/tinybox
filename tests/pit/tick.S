@@ -6,67 +6,78 @@
 
 #define TEST_COUNT	0x0200
 
-	.code16gcc
-	.text
-	.globl	_start
-	.type	_start, @function
+    .code16gcc
+    .text
+    .globl	_start
+    .type	_start, @function
 _start:
-	mov	$0x3f8,%dx
-	cs lea	msg1, %si
-	mov	$(msg1_end-msg1), %cx
-	cs rep/outsb
+    mov	$0x3f8,%dx
+    cs lea	msg1, %si
+    mov	$(msg1_end-msg1), %cx
+    cs rep/outsb
+
+/*
+ * fill up noop handlers
+ */
+    xorw    %ax, %ax
+    xorw    %di, %di
+    movw	%ax, %es
+    movw    $256, %cx
+fill_noop_idt:
+    movw    $noop_handler, %es:(%di)
+    movw    %cs, %es:2(%di)
+    add     $4, %di
+    loop    fill_noop_idt
 
 set_idt:
-	xor	%ax, %ax
-	movw	%ax, %es
-	movw	$timer_isr, %es:(IRQ_OFFSET*4)
-	movw	%cs, %es:(IRQ_OFFSET*4+2)
+    movw	$timer_isr, %es:(IRQ_OFFSET*4)
+    movw	%cs, %es:(IRQ_OFFSET*4+2)
 
 set_pic:
-	# ICW1
-	mov	$0x11, %al
-	mov	$(IO_PIC), %dx
-	out	%al,%dx
-	# ICW2
-	mov	$(IRQ_OFFSET), %al
-	mov	$(IO_PIC+1), %dx
-	out	%al, %dx
-	# ICW3
-	mov	$0x00, %al
-	mov	$(IO_PIC+1), %dx
-	out	%al, %dx
-	# ICW4
-	mov	$0x3, %al
-	mov	$(IO_PIC+1), %dx
-	out	%al, %dx
+    # ICW1
+    mov	$0x11, %al
+    mov	$(IO_PIC), %dx
+    out	%al,%dx
+    # ICW2
+    mov	$(IRQ_OFFSET), %al
+    mov	$(IO_PIC+1), %dx
+    out	%al, %dx
+    # ICW3
+    mov	$0x00, %al
+    mov	$(IO_PIC+1), %dx
+    out	%al, %dx
+    # ICW4
+    mov	$0x3, %al
+    mov	$(IO_PIC+1), %dx
+    out	%al, %dx
 
 set_pit:
-	# set 8254 mode
-	mov	$(IO_PIT+3), %dx
-	mov	$0x34, %al
-	outb	%al, %dx
-	# set 8254 freq 100Hz
-	mov	$(IO_PIT), %dx
-	movb	$(TIMER_DIV(100) % 256), %al
-	outb	%al, %dx
-	movb	$(TIMER_DIV(100) / 256), %al
-	outb	%al, %dx
+    # set 8254 mode
+    mov	$(IO_PIT+3), %dx
+    mov	$0x34, %al
+    outb	%al, %dx
+    # set 8254 freq 100Hz
+    mov	$(IO_PIT), %dx
+    movb	$(TIMER_DIV(100) % 256), %al
+    outb	%al, %dx
+    movb	$(TIMER_DIV(100) / 256), %al
+    outb	%al, %dx
 
 enable_irq0:
-	mov	$0xfe, %al
-	mov	$(IO_PIC+1), %dx
-	out	%al, %dx
-	sti
+    mov	$0xfe, %al
+    mov	$(IO_PIC+1), %dx
+    out	%al, %dx
+    sti
 loop:
-	1:
-	jmp	1b
+    1:
+    jmp	1b
 
 test_ok:
-	mov	$0x3f8,%dx
-	cs lea	msg2, %si
-	mov	$(msg2_end-msg2), %cx
-	cs rep/outsb
-	hlt
+    mov	$0x3f8,%dx
+    cs lea	msg2, %si
+    mov	$(msg2_end-msg2), %cx
+    cs rep/outsb
+    hlt
 
 timer_isr:
     cli
@@ -86,6 +97,10 @@ timer_isr:
 	popfw
 	popaw
 	iretw
+
+noop_handler:
+    iretw
+
 count:
 	.word	TEST_COUNT
 msg1:
