@@ -1,5 +1,6 @@
 /kvm
 *.o
+*.d
 .cscope
 *.bin
 *.elf
