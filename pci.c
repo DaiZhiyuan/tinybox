@@ -36,14 +36,20 @@ static bool pci_config_data_out(struct kvm *self, uint16_t port, void *data, int
     return true;
 }
 
-#define PCI_VENDOR_ID_REDHAT_QUMRANET  0x1af4
-#define PCI_DEVICE_ID_VIRTIO_BLK       0x1001
+#define PCI_VENDOR_ID_REDHAT_QUMRANET           0x1af4
+#define PCI_DEVICE_ID_VIRTIO_BLK                0x1001
+#define PCI_SUBSYSTEM_VENDOR_ID_REDHAT_QUMRANET 0x1af4
+#define PCI_SUBSYSTEM_ID_VIRTIO_BLK             0x0002
 
 static struct pci_device_header virtio_device = {
     .vendor_id              = PCI_VENDOR_ID_REDHAT_QUMRANET,
     .device_id              = PCI_DEVICE_ID_VIRTIO_BLK,
     .header_type            = PCI_HEADER_TYPE_NORMAL,
-    .bar[0]                 = (IOPORT_VIRTIO << 4) | PCI_BASE_ADDRESS_SPACE_IO,
+    .revision_id            = 0,
+    .class                  = 0x010000,
+    .subsys_vendor_id       = PCI_SUBSYSTEM_VENDOR_ID_REDHAT_QUMRANET,
+    .subsys_id              = PCI_SUBSYSTEM_ID_VIRTIO_BLK,
+    .bar[0]                 = IOPORT_VIRTIO | PCI_BASE_ADDRESS_SPACE_IO,
 };
 
 static bool pci_device_matches(uint8_t bus_number, uint8_t device_number, uint8_t function_number)
@@ -110,10 +116,10 @@ void pci__init(void)
 {
     ioport__register(IOPORT_VIRTIO, &virtio_io_ops);
 
-    ioport__register(PCI_CONFIG_DATA + 0, &pci_config_address_ops);
-    ioport__register(PCI_CONFIG_DATA + 1, &pci_config_address_ops);
-    ioport__register(PCI_CONFIG_DATA + 2, &pci_config_address_ops);
-    ioport__register(PCI_CONFIG_DATA + 3, &pci_config_address_ops);
+    ioport__register(PCI_CONFIG_DATA + 0, &pci_config_data_ops);
+    ioport__register(PCI_CONFIG_DATA + 1, &pci_config_data_ops);
+    ioport__register(PCI_CONFIG_DATA + 2, &pci_config_data_ops);
+    ioport__register(PCI_CONFIG_DATA + 3, &pci_config_data_ops);
 
-    ioport__register(PCI_CONFIG_ADDRESS, &pci_config_data_ops);
+    ioport__register(PCI_CONFIG_ADDRESS, &pci_config_address_ops);
 }
