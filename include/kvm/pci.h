@@ -5,10 +5,9 @@
 #include "pci_regs.h"
 
 /* some known offsets and register names */
-#define PCI_CONFIG_ADDRESS  0xcf8
-#define PCI_CONFIG_DATA     0xcfc
-
-#define PCI_NO_DEVICE       0xffffffff
+#define PCI_CONFIG_ADDRESS      0xcf8
+#define PCI_CONFIG_DATA         0xcfc
+#define PCI_CONFIG_BUS_FORWARD  0xcfa
 
 struct pci_config_address {
     unsigned                zeros           : 2;            /* 1  .. 0  */
