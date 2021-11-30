@@ -295,7 +295,7 @@ static bool load_bzimage(struct kvm *self, int fd, const char *kernel_cmdline)
      */
 
     if (read(fd, &boot, sizeof(boot)) != sizeof(boot))
-        die_perror("read");
+        return false;
     
     if (memcmp(&boot.hdr.header, BZIMAGE_MAGIC, strlen(BZIMAGE_MAGIC)) != 0)
         return false;
