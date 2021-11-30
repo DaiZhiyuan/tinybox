@@ -4,55 +4,74 @@
 
 #include <string.h>
 
-static void bios_setup_irq_handler(struct kvm *kvm, unsigned int address,
-				unsigned int irq, void *handler, unsigned int size)
+#include "bios/bios-rom.h"
+
+struct irq_handler {
+    unsigned long address;
+    unsigned int irq;
+    void *handler;
+    size_t size;
+};
+
+#define BIOS_IRQ_ADDR(name) (MB_BIOS_BEGIN + BIOS_OFFSET__##name)
+#define BIOS_IRQ_FUNC(name) ((char *)&bios_rom[BIOS_OFFSET__##name])
+#define BIOS_IRQ_SIZE(name) (BIOS_ENTRY_SIZE(BIOS_OFFSET__##name))
+
+#define DEFINE_BIOS_IRQ_HANDLER(_irq, _handler)         \
+    {                                                   \
+        .irq            = _irq,                         \
+        .address        = BIOS_IRQ_ADDR(_handler),      \
+        .handler        = BIOS_IRQ_FUNC(_handler),      \
+        .size           = BIOS_IRQ_SIZE(_handler),      \
+    }
+
+static struct irq_handler bios_irq_handlers[] = {
+    DEFINE_BIOS_IRQ_HANDLER(0x10, bios_int10),
+    DEFINE_BIOS_IRQ_HANDLER(0x10, bios_int15),
+};
+
+static void setup_irq_handler(struct kvm *kvm, struct irq_handler *handler)
 {
 	struct real_intr_desc intr_desc;
 	void *p;
 
-	p = guest_flat_to_host(kvm, address);
-	memcpy(p, handler, size);
+    p = guest_flat_to_host(kvm, handler->address);
+    memcpy(p, handler->handler, handler->size);
+
 	intr_desc = (struct real_intr_desc) {
-		.segment	= REAL_SEGMENT(address),
-		.offset		= REAL_OFFSET(address),
+		.segment	= REAL_SEGMENT(handler->address),
+		.offset		= REAL_OFFSET(handler->address),
 	};
-	interrupt_table__set(&kvm->interrupt_table, &intr_desc, irq);
+
+    interrupt_table__set(&kvm->interrupt_table, &intr_desc, handler->irq);
 }
 
 void setup_bios(struct kvm *kvm)
 {
 	unsigned long address = MB_BIOS_BEGIN;
 	struct real_intr_desc intr_desc;
+    unsigned int i;
 	void *p;
+
+    /* just copy the bios rom into the place */
+    p = guest_flat_to_host(kvm, MB_BIOS_BEGIN);
+    memcpy(p, bios_rom, bios_rom_size);
 
 	/*
 	 * Setup a *fake* real mode vector table, it has only
 	 * one real hadler which does just iret
 	 */
-	address = BIOS_NEXT_IRQ_ADDR(address, 0);
-	p = guest_flat_to_host(kvm, address);
-	memcpy(p, bios_intfake, bios_intfake_size);
+    address = BIOS_IRQ_ADDR(bios_intfake);
 	intr_desc = (struct real_intr_desc) {
 		.segment	= REAL_SEGMENT(address),
 		.offset		= REAL_OFFSET(address),
 	};
 	interrupt_table__setup(&kvm->interrupt_table, &intr_desc);
 
-	/*
-	 * int 0x10
-	 */
-	address = BIOS_NEXT_IRQ_ADDR(address, bios_intfake_size);
-	bios_setup_irq_handler(kvm, address, 0x10, bios_int10, bios_int10_size);
+    for (i = 0; i < ARRAY_SIZE(bios_irq_handlers); i++)
+        setup_irq_handler(kvm, &bios_irq_handlers[i]);
 
-	/*
-	 * We don't have valid BIOS yet so we put one single memory
-	 * region in e820 memory map
-	 *
-	 * int 0x15
-	 */
-	address = BIOS_NEXT_IRQ_ADDR(address, bios_int10_size);
-	bios_setup_irq_handler(kvm, address, 0x15, bios_int15, bios_int15_size);
-
+    /* we almost done */
 	p = guest_flat_to_host(kvm, 0);
 	interrupt_table__copy(&kvm->interrupt_table, p, REAL_INTR_SIZE);
 }
