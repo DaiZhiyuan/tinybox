@@ -30,7 +30,7 @@ ifeq ($(uname_M),x86_64)
 endif
 endif
 
-CFLAGS	+= $(CPPFLAGS) -Iinclude -g
+CFLAGS	+= $(CPPFLAGS) -Iinclude -Os -g
 
 WARNINGS += -Wall
 WARNINGS += -Wcast-align
