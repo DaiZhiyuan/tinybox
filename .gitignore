@@ -1,3 +1,5 @@
 /kvm
 *.o
 .cscope
+*.bin
+*.elf
