@@ -7,11 +7,22 @@
 
 static struct pci_config_address pci_config_address;
 
+static void *pci_config_address_ptr(int16_t port)
+{
+    unsigned long offset;
+    void *base;
+
+    offset = port - PCI_CONFIG_ADDRESS;
+    base = &pci_config_address;
+
+    return base + offset;
+}
+
 static bool pci_config_address_out(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
 {
-    struct pci_config_address *addr = data;
+    void *p = pci_config_address_ptr(port);
 
-    pci_config_address = *addr;
+    memcpy(p, data, size);
 
     return true;
 }
@@ -19,9 +30,9 @@ static bool pci_config_address_out(struct kvm *self, uint16_t port, void *data, 
 
 static bool pci_config_address_in(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
 {
-    struct pci_config_address *addr = data;
+    void *p = pci_config_address_ptr(port);
 
-    *addr = pci_config_address;
+    memcpy(data, p, size);
 
     return true;
 }
@@ -119,5 +130,8 @@ void pci__init(void)
     ioport__register(PCI_CONFIG_DATA + 2, &pci_config_data_ops);
     ioport__register(PCI_CONFIG_DATA + 3, &pci_config_data_ops);
 
-    ioport__register(PCI_CONFIG_ADDRESS, &pci_config_address_ops);
+    ioport__register(PCI_CONFIG_ADDRESS + 0, &pci_config_address_ops);
+    ioport__register(PCI_CONFIG_ADDRESS + 1, &pci_config_address_ops);
+    ioport__register(PCI_CONFIG_ADDRESS + 2, &pci_config_address_ops);
+    ioport__register(PCI_CONFIG_ADDRESS + 3, &pci_config_address_ops);
 }
