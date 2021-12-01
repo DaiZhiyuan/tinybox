@@ -1,6 +1,7 @@
 #include "kvm/kvm.h"
 
 #include "kvm/early_printk.h"
+#include "kvm/blk-virtio.h"
 #include "kvm/util.h"
 #include "kvm/pci.h"
 
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
 
     early_printk__init();
     pci__init();
+    blk_virtio__init();
 
     for (;;) {
         kvm__run(kvm);
