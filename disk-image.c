@@ -3,6 +3,7 @@
 #include "kvm/util.h"
 
 #include <sys/types.h>
+#include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stddef.h>
@@ -13,27 +14,10 @@
 #define SECTOR_SHIFT        9
 #define SECTOR_SIZE         (1UL << SECTOR_SHIFT)
 
-struct disk_image *disk_image__open(const char *filename)
+static void setup_geometry(struct disk_image *self)
 {
-    struct disk_image *self;
-    struct stat st;
     int cylinders, heads, sectors;
-
-    self = malloc(sizeof *self);
-    if (!self)
-        return NULL;
-
-    self->fd = open(filename, O_RDONLY);
-    if (self->fd < 0)
-        goto failed_free;
-
-    if (fstat(self->fd, &st) < 0)
-        goto failed_close_fd;
-
-    self->size = st.st_size;
-    self->mmap = mmap(NULL, self->size, PROT_READ, MAP_PRIVATE, self->fd, 0);
-    if (self->mmap == MAP_FAILED)
-        goto failed_close_fd;
+    uint64_t total_sects;
 
     /*
      * set the standart disk geometry of the image
@@ -64,8 +48,38 @@ struct disk_image *disk_image__open(const char *filename)
     self->heads     = heads;
     self->cylinders = cylinders;
 
+    total_sects = self->sectors * self->heads * self->cylinders;
+
+    if (total_sects != self->size >> SECTOR_SHIFT)
+        warning("Geometry information advertises %" PRIu64 " total sectors but raw image size has %"
+                PRIu64 " sectors", total_sects, self->size >> SECTOR_SHIFT);
+}
+
+struct disk_image *disk_image__open(const char *filename)
+{
+    struct disk_image *self;
+    struct stat st;
+
+    self = malloc(sizeof *self);
+    if (!self)
+        return NULL;
+
+    self->fd = open(filename, O_RDONLY);
+    if (self->fd < 0)
+        goto failed_free;
+
+    if (fstat(self->fd, &st) < 0)
+        goto failed_close_fd;
+
+    self->size = st.st_size;
+    self->mmap = mmap(NULL, self->size, PROT_READ, MAP_PRIVATE, self->fd, 0);
+    if (self->mmap == MAP_FAILED)
+        goto failed_close_fd;
+
+    setup_geometry(self);
+
     info("block image geometry: sectors: %d heads: %d cylinders: %d",
-        sectors, heads, cylinders);
+        self->sectors, self->heads, self->cylinders);
 
     return self;
 
