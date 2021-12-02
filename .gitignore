@@ -1,7 +1,7 @@
 /kvm
 *.o
 *.d
-.cscope
+cscope.*
 tags
 *.bin
 *.elf
