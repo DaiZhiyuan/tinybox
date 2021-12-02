@@ -32,6 +32,7 @@ static struct device device = {
         .blk_size = 4096,
     },
     .host_features  = (1UL << VIRTIO_BLK_F_GEOMETRY)
+                    | (1UL << VIRTIO_BLK_F_RO)
                     | (1UL << VIRTIO_BLK_F_BLK_SIZE),
 };
 
