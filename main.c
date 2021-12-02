@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
     const char *kernel_cmdline = NULL;
     const char *kvm_dev = "/dev/kvm";
     unsigned long ram_size = 64UL << 20;
+    bool enable_virtio = false;
     bool single_step = false;
     int i;
 
@@ -66,6 +67,9 @@ int main(int argc, char *argv[])
             continue;
         } else if (option_matches(argv[i], "--kvm-dev=")) {
             kvm_dev = &argv[i][10];
+            continue;
+        } else if (option_matches(argv[i], "--enable-virtio")) {
+            enable_virtio = true;
             continue;
         } else if (option_matches(argv[i], "--single-step")) {
             single_step = true;
@@ -115,7 +119,9 @@ int main(int argc, char *argv[])
 
     early_printk__init();
     pci__init();
-    blk_virtio__init();
+
+    if (enable_virtio)
+        blk_virtio__init();
 
     for (;;) {
         kvm__run(kvm);
