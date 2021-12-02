@@ -15,10 +15,9 @@ struct device {
 };
 
 static struct device device = {
-    .host_features = (1UL << VIRTIO_BLK_F_SEG_MAX)
-                    |(1UL << VIRTIO_BLK_F_GEOMETRY)
-                    |(1UL << VIRTIO_BLK_F_TOPOLOGY)
-                    |(1UL << VIRTIO_BLK_F_BLK_SIZE),
+    .host_features  = (1UL << VIRTIO_BLK_F_GEOMETRY)
+                    | (1UL << VIRTIO_BLK_F_TOPOLOGY)
+                    | (1UL << VIRTIO_BLK_F_BLK_SIZE),
 };
 
 static bool blk_virtio_in(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
