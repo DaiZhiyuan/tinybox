@@ -27,7 +27,7 @@ static bool blk_virtio_in(struct kvm *self, uint16_t port, void *data, int size,
 
     offset = port - IOPORT_VIRTIO;
 
-    /* TODO: Let virtio block device handle this */
+    /* Let virtio block device handle this */
     if (offset >= VIRTIO_PCI_CONFIG_NOMSI)
         return false;
 
@@ -49,11 +49,10 @@ static bool blk_virtio_in(struct kvm *self, uint16_t port, void *data, int size,
     case VIRTIO_PCI_STATUS:
         ioport__write8(data, device.status);
         break;
-    case VIRTIO_PCI_ISR: {
+    case VIRTIO_PCI_ISR:
         ioport__write8(data, 0x1);
         kvm__irq_line(self, VIRTIO_BLK_IRQ, 0);
-        return true;
-    }
+        break;
     case VIRTIO_MSI_CONFIG_VECTOR:
     default:
         return false;
@@ -68,7 +67,7 @@ static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size
 
     offset = port - IOPORT_VIRTIO;
 
-    /* TODO: Let virtio block device handle this */
+    /* Let virtio block device handle this */
     if (offset >= VIRTIO_PCI_CONFIG_NOMSI)
         return true;
 
@@ -77,13 +76,12 @@ static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size
         device.guest_features = ioport__read32(data);
         break;
     case VIRTIO_PCI_QUEUE_PFN:
-        return true;
+        break;
     case VIRTIO_PCI_QUEUE_SEL:
-        return true;
-    case VIRTIO_PCI_QUEUE_NOTIFY: {
+        break;
+    case VIRTIO_PCI_QUEUE_NOTIFY:
         kvm__irq_line(self, VIRTIO_BLK_IRQ, 1);
-        return true;
-    }
+        break;
     case VIRTIO_PCI_STATUS:
         device.status = ioport__read8(data);
         break;
