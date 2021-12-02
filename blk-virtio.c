@@ -106,6 +106,7 @@ static bool blk_virtio_in(struct kvm *self, uint16_t port, void *data, int size,
     return true;
 }
 
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
 {
     unsigned long offset;
