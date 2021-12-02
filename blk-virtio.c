@@ -110,7 +110,6 @@ static bool blk_virtio_in(struct kvm *self, uint16_t port, void *data, int size,
     return true;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size, uint32_t count)
 {
     unsigned long offset;
@@ -146,6 +145,7 @@ static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size
         uint32_t dst_len;
         uint8_t *status;
         void *dst;
+        int err;
 
         queue_index = ioport__read16(data);
 
@@ -174,17 +174,11 @@ static bool blk_virtio_out(struct kvm *self, uint16_t port, void *data, int size
         desc = &queue->vring.desc[desc->next];
         status = guest_flat_to_host(self, desc->addr);
 
-        if (self->disk_image) {
-            int err;
-
-            err = disk_image__read_sector(self->disk_image, req->sector, dst, dst_len);
-
-            if (err)
-                *status = VIRTIO_BLK_S_IOERR;
-            else
-                *status = VIRTIO_BLK_S_OK;
-        } else
+        err = disk_image__read_sector(self->disk_image, req->sector, dst, dst_len);
+        if (err)
             *status = VIRTIO_BLK_S_IOERR;
+        else
+            *status = VIRTIO_BLK_S_OK;
 
         kvm__irq_line(self, VIRTIO_BLK_IRQ, 1);
         break;
@@ -229,8 +223,10 @@ static struct pci_device_header blk_virtio_device = {
 
 void blk_virtio__init(struct kvm *self)
 {
-    if (self->disk_image)
-        device.blk_config.capacity = self->disk_image->size;
+    if (!self->disk_image)
+        return;
+
+    device.blk_config.capacity = self->disk_image->size;
 
     pci__register(&blk_virtio_device, 1);
 
