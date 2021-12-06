@@ -103,6 +103,7 @@ void serial8250__interrupt(struct kvm *self)
 
     /* Only send an IRQ if there's work to do. */
     if (new_iir) {
+        dev->counter = 0;
         dev->iir = new_iir;
         kvm__irq_line(self, dev->irq, 0);
         kvm__irq_line(self, dev->irq, 1);
@@ -163,10 +164,8 @@ static bool serial8250_out(struct kvm *self, uint16_t port, void *data, int size
             }
             fflush(stdout);
 
-            if (dev->counter++ > 10) {
+            if (dev->counter++ > 10)
                 dev->iir = UART_IIR_NO_INT;
-                dev->counter = 0;
-            }
 
             break;
         }
