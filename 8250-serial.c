@@ -231,6 +231,9 @@ static bool serial8250_in(struct kvm *self, uint16_t port, void *data, int size,
                 ioport__write8(data, dev->rbr);
             }
             return true;
+        case UART_IER:
+            ioport__write8(data, dev->ier);
+            return true;
         }
     }
 
