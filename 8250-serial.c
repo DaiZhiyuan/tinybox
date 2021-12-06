@@ -29,7 +29,7 @@ static struct serial8250_device device = {
     .iobase = 0x3f8,    /* ttyS0 */
     .irq    = 4,
     .iir    = UART_IIR_NO_INT,
-    .lsr    = UART_LSR_THRE,
+    .lsr    = UART_LSR_TEMT | UART_LSR_THRE,
 };
 
 static int read_char(int fd)
