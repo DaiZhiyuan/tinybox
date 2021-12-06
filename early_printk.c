@@ -22,32 +22,25 @@
 
 /* Interrupt identification register */
 #define IIR     2
+#define UART_IIR_NO_INT     0x01
 
 /* 16550 FIFO Control Register */
 #define FCR     2
 
 /* Line control register */
 #define LCR     3
-
-enum {
-    DLAB    = 1 << 7,   /* Divisor latch access bit (DLAB) */
-    /* bit 7 - set break enable */
-    PM2     = 1 << 5,
-    PM1     = 1 << 4,
-    PM0     = 1 << 3,
-    STB     = 1 << 2,
-    WLS1    = 1 << 1,
-    WLS0    = 1 << 0,
-};
+#define UART_LCR_DLAB       0x80
 
 /* Modem control register */
 #define MCR     4
 
 /* Line status register */
 #define LSR     5
+#define UART_LSR_THRE       0x20
 
 /* Modem status register */
 #define MSR     6
+#define UART_MSR_CTS        0x10
 
 /* Scratch register */
 #define SCR     7
@@ -71,7 +64,7 @@ static bool serial8250_out(struct kvm *self, uint16_t port, void *data, int size
 {
     uint16_t offset = port - device.iobase;
 
-    if (device.lcr & DLAB) {
+    if (device.lcr & UART_LCR_DLAB) {
         switch (offset) {
         case DLL:
             device.dll = ioport__read8(data);
@@ -128,7 +121,7 @@ static bool serial8250_in(struct kvm *self, uint16_t port, void *data, int size,
 {
     uint16_t offset = port - device.iobase;
 
-    if (device.lcr & DLAB)
+    if (device.lcr & UART_LCR_DLAB)
         return false;
 
     switch (offset) {
@@ -139,7 +132,7 @@ static bool serial8250_in(struct kvm *self, uint16_t port, void *data, int size,
         ioport__write8(data, device.ier);
         break;
     case IIR:
-        ioport__write8(data, 0x01); /* no interrupt pending */
+        ioport__write8(data, UART_IIR_NO_INT);
         break;
     case LCR:
         ioport__write8(data, device.lcr);
@@ -148,10 +141,10 @@ static bool serial8250_in(struct kvm *self, uint16_t port, void *data, int size,
         ioport__write8(data, device.mcr);
         break;
     case LSR:
-        ioport__write8(data, 0x20); /* XMTRDY */
+        ioport__write8(data, UART_LSR_THRE);
         break;
     case MSR:
-        ioport__write8(data, 0x01); /* clear to send */
+        ioport__write8(data, UART_MSR_CTS);
         break;
     case SCR:
         ioport__write8(data, device.scr);
