@@ -8,6 +8,9 @@ endif
 export E Q
 
 PROGRAM	= kvm
+FIND = find
+CSCOPE = cscope
+TAGS = ctags
 
 OBJS	+= 8250-serial.o
 OBJS	+= blk-virtio.o
@@ -109,6 +112,7 @@ clean:
 	$(Q) rm -f bios/bios-rom.h
 	$(Q) rm -f $(DEPS) $(OBJS) $(PROGRAM)
 	$(Q) rm -f cscope.*
+	$(Q) rm -f tags
 
 .PHONY: clean
 
@@ -121,9 +125,16 @@ $(KVM_DEV):
 devices: $(KVM_DEV)
 .PHONY: devices
 
+tags:
+	$(E) "  GEN" $@
+	$(Q) $(RM) -f tags
+	$(Q) $(FIND) . -name '*.[hcS]' -print | xargs $(TAGS) -a
+.PHONY: tags
+
 cscope:
 	$(E) "  GEN" $@
-	$(Q) cscope -Rqb
+	$(Q) $(FIND) . -name '*.[hcS]' -print > cscope.files
+	$(Q) cscope -bkqu
 .PHONY:cscope
 
 # Deps
