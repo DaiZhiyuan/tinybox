@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
                                 kvm->kvm_run->io.size,
                                 kvm->kvm_run->io.count);
                 if (!ret)
-                    goto exit_kvm;
+                    goto panic_kvm;
 
                 break;
             }
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
                                 kvm->kvm_run->mmio.len,
                                 kvm->kvm_run->mmio.is_write);
                 if(!ret)
-                    goto exit_kvm;
+                    goto panic_kvm;
 
                 break;
             }
@@ -209,13 +209,19 @@ int main(int argc, char *argv[])
                 serial8250__interrupt(kvm);
                 break;
             }
-            default:
+            case KVM_EXIT_SHUTDOWN:
                 goto exit_kvm;
-
+            default:
+                goto panic_kvm;
         }
     }
 
 exit_kvm:
+    kvm__delete(kvm);
+
+    return 0;
+
+panic_kvm:
     fprintf(stderr, "KVM exit reason: %" PRIu32 " (\"%s\")\n",
         kvm->kvm_run->exit_reason, kvm_exit_reasons[kvm->kvm_run->exit_reason]);
     if (kvm->kvm_run->exit_reason == KVM_EXIT_UNKNOWN)
@@ -227,5 +233,5 @@ exit_kvm:
 
     kvm__delete(kvm);
 
-    return 0;
+    return 1;
 }
