@@ -48,7 +48,6 @@ static struct serial8250_device devices[] = {
         .irq    = 4,
         .iir    = UART_IIR_NO_INT,
     },
-
 };
 
 static int read_char(int fd)
@@ -74,6 +73,9 @@ static bool is_readable(int fd)
 static void serial8250__receive(struct kvm *self, struct serial8250_device *dev)
 {
     int c;
+
+    if (dev->lsr & UART_LSR_DR)
+        return;
 
     if (!is_readable(fileno(stdin)))
         return;
